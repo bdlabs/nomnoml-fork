@@ -56,17 +56,22 @@ export function layout(measurer: Measurer, config: Config, ast: Compartment): Co
     }
     grapheLayout(g)
 
+    var left = 0
+    var right = 0
+    var top = 0
+    var bottom = 0
+
     var rels = indexBy(c.relations, 'id')
     var nodes = indexBy(c.nodes, 'name')
     g.nodes().forEach((name: string) => {
       var node = g.node(name)
       nodes[name].x = node.x!
       nodes[name].y = node.y!
+      left = Math.min(left, node.x!)
+      right = Math.max(right, node.x! + node.width!)
+      top = Math.min(top, node.y!)
+      bottom = Math.max(bottom, node.y! + node.height!)
     })
-    var left = 0
-    var right = 0
-    var top = 0
-    var bottom = 0
     g.edges().forEach((edgeObj) => {
       var edge = g.edge(edgeObj)
       var start = nodes[edgeObj.v]
@@ -78,36 +83,31 @@ export function layout(measurer: Measurer, config: Config, ast: Compartment): Co
       var endP = rel.path[rel.path.length - 2]
       layoutLabel(rel.startLabel, startP, adjustQuadrant(quadrant(startP, start, 4), start, end))
       layoutLabel(rel.endLabel, endP, adjustQuadrant(quadrant(endP, end, 2), end, start))
-      left = Math.min(
-        left,
-        rel.startLabel.x!,
-        rel.endLabel.x!,
-        ...edge.points!.map((e) => e.x),
-        ...edge.points!.map((e) => e.x)
-      )
-      right = Math.max(
-        right,
-        rel.startLabel.x! + rel.startLabel.width!,
-        rel.endLabel.x! + rel.endLabel.width!,
-        ...edge.points!.map((e) => e.x)
-      )
-      top = Math.min(top, rel.startLabel.y!, rel.endLabel.y!, ...edge.points!.map((e) => e.y))
-      bottom = Math.max(
-        bottom,
-        rel.startLabel.y! + rel.startLabel.height!,
-        rel.endLabel.y! + rel.endLabel.height!,
-        ...edge.points!.map((e) => e.y)
-      )
+      var sl = rel.startLabel
+      var el = rel.endLabel
+      var xs = edge.points!.map((e) => e.x)
+      var ys = edge.points!.map((e) => e.y)
+      left = Math.min(left, sl.x!, el.x!, ...xs)
+      right = Math.max(right, sl.x! + sl.width!, el.x! + el.width!, ...xs)
+      top = Math.min(top, sl.y!, el.y!, ...ys)
+      bottom = Math.max(bottom, sl.y! + sl.height!, el.y! + el.height!, ...ys)
     })
-    var graph = g.graph()
-    var width = Math.max(graph.width!, right - left)
-    var height = Math.max(graph.height!, bottom - top)
+    console.log({ top, right, bottom, left })
+
+    console.log({ graph: g.graph() })
+    console.log({ huhu: 'huhu' })
+    var width = right - left
+    var height = bottom - top
     var graphHeight = height ? height + 2 * config.gutter : 0
     var graphWidth = width ? width + 2 * config.gutter : 0
+    console.log({ width, height, graphHeight, graphWidth })
 
-    c.width = Math.max(textSize.width, graphWidth) + 2 * config.padding
-    c.height = textSize.height + graphHeight + config.padding
-    c.offset = { x: config.padding - left, y: config.padding - top }
+    c.width = Math.max(textSize.width, graphWidth)
+    c.height = textSize.height + graphHeight
+    c.offset = {
+      x: config.padding - left + config.edgeMargin,
+      y: config.padding - top + config.edgeMargin,
+    }
   }
 
   function toPoint(o: Vec): Vec {
